@@ -63,3 +63,48 @@ class TestKauppa(unittest.TestCase):
         self.kauppa.tilimaksu("pekka", "12345")
 
         self.pankki_mock.tilisiirto.assert_called_with("pekka", ANY, "12345", ANY, 5)
+
+    def test_aloita_asiointi_nollaa_edellisen_ostoksen_tiedot(self):
+        # tehdään ensimmäinen ostos
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(1)
+        self.kauppa.tilimaksu("pekka", "12345")
+        self.pankki_mock.tilisiirto.assert_called_with("pekka", ANY, "12345", ANY, 5)
+
+        # aloitetaan uusi asiointi
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(2)
+        self.kauppa.tilimaksu("antti", "67890")
+        self.pankki_mock.tilisiirto.assert_called_with("antti", ANY, "67890", ANY, 3)
+
+    def test_uusi_viitenumero_jokaiselle_maksutapahtumalle(self):
+        self.viitegeneraattori_mock.uusi.side_effect = [42, 43]
+
+        # tehdään ensimmäinen ostos
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(1)
+        self.kauppa.tilimaksu("pekka", "12345")
+        self.pankki_mock.tilisiirto.assert_called_with("pekka", 42, "12345", ANY, 5)
+
+        # tehdään toinen ostos
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(2)
+        self.kauppa.tilimaksu("antti", "67890")
+        self.pankki_mock.tilisiirto.assert_called_with("antti", 43, "67890", ANY, 3)
+
+    def test_poista_korista_poistaa_tuotteen_korista(self):
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(1)
+        self.kauppa.poista_korista(1)
+        self.kauppa.tilimaksu("pekka", "12345")
+
+        # Varmistetaan, että tilisiirron summa on 0, koska kori on tyhjä
+        self.pankki_mock.tilisiirto.assert_called_with("pekka", ANY, "12345", ANY, 0)
+
+    def test_poista_korista_palauttaa_tuotteen_varastoon(self):
+        self.kauppa.aloita_asiointi()
+        self.kauppa.lisaa_koriin(1)
+        self.kauppa.poista_korista(1)
+
+        # Varmistetaan, että varaston metodia palauta_varastoon on kutsuttu
+        self.varasto_mock.palauta_varastoon.assert_called_with(self.varasto_mock.hae_tuote(1))
