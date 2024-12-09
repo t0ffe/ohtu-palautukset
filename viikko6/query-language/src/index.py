@@ -10,10 +10,16 @@ def main():
     
     matcher = (
         query
-        .plays_in("NYR")
-        .has_at_least(10, "goals")
-        .has_fewer_than(20, "goals")
-        .build()
+            .one_of(
+                query.plays_in("PHI")
+                    .has_at_least(10, "assists")
+                    .has_fewer_than(10, "goals")
+                    .build(),
+                query.plays_in("EDM")
+                    .has_at_least(50, "points")
+                    .build()
+            )
+            .build()
     )
 
     for player in stats.matches(matcher):
